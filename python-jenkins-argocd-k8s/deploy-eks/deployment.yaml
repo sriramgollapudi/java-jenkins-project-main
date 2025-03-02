@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sping-boot-app
+  labels:
+    app: sping-boot-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sping-boot-app
+  template:
+    metadata:
+      labels:
+        app: sping-boot-app
+    spec:
+      containers:
+      - name: sping-boot-app
+        image: 471112764201.dkr.ecr.us-east-1.amazonaws.com/java-spring-boot-app:latest
+        ports:
+        - containerPort: 8000

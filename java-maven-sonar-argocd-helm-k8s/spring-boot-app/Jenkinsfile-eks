@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        AWS_ACCOUNT_ID = "713881803905"
+        AWS_REGION = "us-east-1"
+        ECR_REPO = "java-spring-boot-app"
+        KUBE_CONFIG = '/home/jenkins/.kube/config'
+        SONAR_URL = "http://18.207.96.210:9000"
+    }
+
+    stages {
+        stage('Build Maven Package') {
+            steps {
+                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+                    script {
+                        sh """
+                           mvn clean package
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Static Code Analysis') {
+            environment {
+                SONAR_URL = "http://44.211.186.118:9000"
+            }
+            steps {
+                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+                    withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                        sh 'mvn sonar:sonar -Dsonar.login=$SONAR_AUTH_TOKEN -Dsonar.host.url=${SONAR_URL}'
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+                    script {
+                        sh """
+                           docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest .
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Login to ECR') {
+            steps {
+                script {
+                    sh """
+                        aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    """
+                }
+            }
+        }
+
+        stage('Push Image to ECR') {
+            steps {
+                dir('4-flask-app') {
+                    script {
+                        sh "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest"
+                    }
+                }
+            }
+        }
+
+        // stage('Deploy to EKS') {
+        //     steps {
+        //         dir('4-flask-app') {
+        //             script {
+        //                 sh """
+        //                     aws eks update-kubeconfig --region $AWS_REGION --name my-eks-cluster
+        //                     kubectl apply -f deployment.yaml
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
+    }
+    // post {
+        
+    // }
+}
