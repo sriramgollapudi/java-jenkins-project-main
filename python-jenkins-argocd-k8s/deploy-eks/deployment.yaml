@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
       - name: sping-boot-app
-        image: 471112764201.dkr.ecr.us-east-1.amazonaws.com/java-spring-boot-app:latest
+        image: 713881803905.dkr.ecr.us-east-1.amazonaws.com/java-spring-boot-app:latest
         ports:
         - containerPort: 8000
